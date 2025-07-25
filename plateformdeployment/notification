@@ -1,0 +1,74 @@
+name: Full Stack Deploy with Notification
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Deploy Frontend to Netlify
+        uses: nwtgck/actions-netlify@v1.2
+        id: netlify
+        with:
+          publish-dir: ./frontend/build
+          production-branch: main
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+      - name: Deploy Backend to Railway
+        uses: railwayapp/cli-action@v1
+        id: railway
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          project_id: ${{ secrets.RAILWAY_PROJECT_ID }}
+          command: deploy
+
+      - name: Send Success Email
+        if: ${{ success() }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: 'Deployment Successful 🚀'
+          to: 'your-email@example.com'
+          from: 'your-email@example.com'
+          body: |
+            आपकी वेबसाइट और बैकएंड सफलतापूर्वक डिप्लॉय हो चुके हैं!
+
+      - name: Send Failure Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: 'Deployment Failed ❌'
+          to: 'your-email@example.com'
+          from: 'your-email@example.com'
+          body: |
+            डिप्लॉयमेंट में समस्या आई है, कृपया जाँच करें।
